@@ -1,9 +1,40 @@
-import time
 from datetime import datetime, timedelta
 from func_utils import format_number
+import time
+import json
+
+from pprint import pprint
 
 
-  # Place market order
+# Get existing open positions
+def is_open_positions(client, market):
+
+  # Protect API
+  time.sleep(0.2)
+
+  # Get positions
+  all_positions = client.private.get_positions(
+    market=market,
+    status="OPEN"
+  )
+
+  # Determine if open
+  if len(all_positions.data["positions"]) > 0:
+    return True
+  else:
+    return False
+
+
+# Check order status
+def check_order_status(client, order_id):
+  order = client.private.get_order_by_id(order_id)
+  if order.data:
+    if "order" in order.data.keys():
+      return order.data["order"]["status"]
+  return "FAILED"
+
+
+# Place market order
 def place_market_order(client, market, side, size, price, reduce_only):
   # Get Position Id
   account_response = client.private.get_account()
@@ -11,7 +42,7 @@ def place_market_order(client, market, side, size, price, reduce_only):
 
   # Get expiration time
   server_time = client.public.get_time()
-  expiration = datetime.fromisoformat(server_time.data["iso"].replace("Z", "")) + timedelta(seconds=30000)
+  expiration = datetime.fromisoformat(server_time.data["iso"].replace("Z", "")) + timedelta(seconds=10000)
 
   # Place an order
   placed_order = client.private.create_order(
@@ -25,18 +56,18 @@ def place_market_order(client, market, side, size, price, reduce_only):
     limit_fee='0.015',
     expiration_epoch_seconds=expiration.timestamp(),
     time_in_force="FOK", 
-    reduce_only=reduce_only 
+    reduce_only=reduce_only
   )
 
   # print(placed_order.data)
-  
+
   # Return result
   return placed_order.data
 
- 
+
 # Abort all open positions
 def abort_all_positions(client):
-
+  
   # Cancel all orders
   client.private.cancel_all_orders()
 
@@ -57,10 +88,10 @@ def abort_all_positions(client):
   close_orders = []
   if len(all_positions) > 0:
 
-     # Loop through each position
+    # Loop through each position
     for position in all_positions:
 
-       # Determine Market
+      # Determine Market
       market = position["market"]
 
       # Determine Side
@@ -84,17 +115,16 @@ def abort_all_positions(client):
         True
       )
 
-       # Append the result
+      # Append the result
       close_orders.append(order)
 
       # Protect API
       time.sleep(0.2)
 
+    # Override json file with empty list
+    bot_agents = []
+    with open("bot_agents.json", "w") as f:
+      json.dump(bot_agents, f)
 
-# Return closed orders
+    # Return closed orders
     return close_orders
-
-     
-
-
-
